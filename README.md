@@ -46,6 +46,6 @@ In the `wav-samples` directory you'll find some sample audio files:
 
 `1-direct-no-transforms.wav`: Straight from the microphone, no processing. It's very quiet.
 
-`2-svc-12db-amplification.wav`: 12dB amplification applied by the SVC filter.
+`2-svc-36db-amplification.wav`: 36dB amplification applied by the SVC filter.
 
-`3-svc-greq.wav`: -6 -6 -6 +6 +6 +6 +6 +6 +6 +6 GREQ filter followed by +12dB SVC filter.
+`3-svc-greq.wav`: -6 -6 -6 +6 +6 +6 +6 +6 +6 +6 GREQ filter followed by +36dB SVC filter.
