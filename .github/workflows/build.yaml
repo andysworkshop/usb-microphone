@@ -1,4 +1,4 @@
-name: build a release version of the project
+name: release build
 on: [ push, pull_request ]
 
 jobs:
