@@ -1,0 +1,19 @@
+name: release build
+on: [ push, pull_request ]
+
+jobs:
+  release:
+    name: Build the release configuration
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install compiler
+        run: |
+          wget -q -O /tmp/gcc.tar.bz2 https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2
+          tar xfj /tmp/gcc.tar.bz2 -C /tmp
+      - name: Checkout the source code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.ref }}
+      - name: Execute the Makefile
+        run: |
+          PATH=/tmp/gcc-arm-none-eabi-10-2020-q4-major/bin:$PATH make -j release

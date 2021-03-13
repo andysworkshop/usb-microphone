@@ -1,3 +1,4 @@
+![Release build](https://github.com/andysworkshop/usb-microphone/actions/workflows/build.yaml/badge.svg)
 # I2S USB Microphone
 
 This repository contains the source code to the firmware for a 48kHz 16-bit USB microphone implemented using an I2S INMP441 MEMS microphone and an STM32F446. 
