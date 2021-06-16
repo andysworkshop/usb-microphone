@@ -76,16 +76,16 @@ inline GraphicEqualizer::GraphicEqualizer() {
   // set the bands
 
   _dynamicParam.enable = 1;
-  _dynamicParam.user_gain_per_band_dB[0] = -6;  // 62
-  _dynamicParam.user_gain_per_band_dB[1] = -6;  // 115
-  _dynamicParam.user_gain_per_band_dB[2] = -6;  // 214
-  _dynamicParam.user_gain_per_band_dB[3] = 6;   // 399
-  _dynamicParam.user_gain_per_band_dB[4] = 6;   // 742
-  _dynamicParam.user_gain_per_band_dB[5] = 6;   // 1380
-  _dynamicParam.user_gain_per_band_dB[6] = 6;   // 2567
-  _dynamicParam.user_gain_per_band_dB[7] = 6;   // 4775
-  _dynamicParam.user_gain_per_band_dB[8] = 6;   // 8882
-  _dynamicParam.user_gain_per_band_dB[9] = 6;   // 16520
+  _dynamicParam.user_gain_per_band_dB[0] = -3;  // 62
+  _dynamicParam.user_gain_per_band_dB[1] = -3;  // 115
+  _dynamicParam.user_gain_per_band_dB[2] = -3;  // 214
+  _dynamicParam.user_gain_per_band_dB[3] = 3;   // 399
+  _dynamicParam.user_gain_per_band_dB[4] = 3;   // 742
+  _dynamicParam.user_gain_per_band_dB[5] = 3;   // 1380
+  _dynamicParam.user_gain_per_band_dB[6] = 3;   // 2567
+  _dynamicParam.user_gain_per_band_dB[7] = 3;   // 4775
+  _dynamicParam.user_gain_per_band_dB[8] = 3;   // 8882
+  _dynamicParam.user_gain_per_band_dB[9] = 3;   // 16520
   _dynamicParam.gain_preset_idx = 0;
 
   greq_setConfig(&_dynamicParam, _greqPersistent);
