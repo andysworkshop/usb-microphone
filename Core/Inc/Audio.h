@@ -182,36 +182,51 @@ inline const GraphicEqualizer& Audio::getGraphicEqualizer() const {
 
 inline void Audio::sendData(volatile int32_t *data_in, int16_t *data_out) {
 
-  // only do anything at all if we're not muted and we're connected
+  // only do anything at all if we're connected
 
-  if (!_muteButton.isMuted() && _running) {
+  if (_running) {
 
-    // transform the I2S samples from the 64 bit L/R (32 bits per side) of which we
-    // only have data in the L side. Take the most significant 16 bits, being careful
-    // to respect the sign bit.
+    if (_muteButton.isMuted()) {
 
-    int16_t *dest = _processBuffer;
+      // we're muted so zero this half of the send buffer. this works around Windows/Citrix habit
+      // of disconnecting the device if the stream of sample data suddenly pauses.
 
-    for (uint16_t i = 0; i < MIC_SAMPLES_PER_PACKET / 2; i++) {
-      *dest++ = data_in[0];     // left channel has data
-      *dest++ = data_in[0];     // right channel is duplicated from the left
-      data_in += 2;
-    }
+      memset(data_out, 0, (MIC_SAMPLES_PER_PACKET * sizeof(uint16_t)) / 2);
 
-    // apply the graphic equaliser filters using the ST GREQ library then
-    // adjust the gain (volume) using the ST SVC library
+    } else {
 
-    _graphicEqualiser.process(_processBuffer, MIC_SAMPLES_PER_PACKET / 2);
-    _volumeControl.process(_processBuffer, MIC_SAMPLES_PER_PACKET / 2);
+      // transform the I2S samples from the 64 bit L/R (32 bits per side) of which we
+      // only have data in the L side. Take the most significant 16 bits, being careful
+      // to respect the sign bit.
 
-    // we only want the left channel from the processed buffer
+      int16_t *dest = _processBuffer;
 
-    int16_t *src = _processBuffer;
-    dest = data_out;
+      for (uint16_t i = 0; i < MIC_SAMPLES_PER_PACKET / 2; i++) {
 
-    for (uint16_t i = 0; i < MIC_SAMPLES_PER_PACKET / 2; i++) {
-      *dest++ = *src;
-      src += 2;
+        // dither the LSB with a random bit
+
+        int16_t sample = (data_in[0] & 0xfffffffe) | (rand() & 1);
+
+        *dest++ = sample;     // left channel has data
+        *dest++ = sample;     // right channel is duplicated from the left
+        data_in += 2;
+      }
+
+      // apply the graphic equaliser filters using the ST GREQ library then
+      // adjust the gain (volume) using the ST SVC library
+
+      _graphicEqualiser.process(_processBuffer, MIC_SAMPLES_PER_PACKET / 2);
+      _volumeControl.process(_processBuffer, MIC_SAMPLES_PER_PACKET / 2);
+
+      // we only want the left channel from the processed buffer
+
+      int16_t *src = _processBuffer;
+      dest = data_out;
+
+      for (uint16_t i = 0; i < MIC_SAMPLES_PER_PACKET / 2; i++) {
+        *dest++ = *src;
+        src += 2;
+      }
     }
 
     // send the adjusted data to the host
