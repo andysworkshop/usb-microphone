@@ -20,10 +20,15 @@ class VolumeControl {
     buffer_t _svcInput;
     buffer_t _svcOutput;
 
+    svc_dynamic_param_t _dynamicParams;
+
   public:
     VolumeControl();
 
+    void setMute(bool mute);
     void setVolume(int16_t volume);
+    bool isMuted() const;
+
     void process(int16_t *iobuffer, int32_t nSamples);
 };
 
@@ -55,6 +60,18 @@ inline VolumeControl::VolumeControl() {
     Error_Handler();
   }
 
+  // initialise default dynamic params
+
+  _dynamicParams.mute = 0;
+  _dynamicParams.target_volume_dB = 72;   // max volume
+
+  // enable compression, high quality, use timings from ST's sample application
+
+  _dynamicParams.enable_compr = 1;
+  _dynamicParams.quality = 1;
+  _dynamicParams.attack_time = 2103207220;
+  _dynamicParams.release_time = 2146924480;
+
   // buffer constants
 
   _svcInput.nb_channels = _svcOutput.nb_channels = 2;
@@ -73,24 +90,34 @@ inline VolumeControl::VolumeControl() {
 
 inline void VolumeControl::setVolume(int16_t volume) {
 
-  // unmuted, target volume provided externally
+  _dynamicParams.target_volume_dB = volume;
 
-  svc_dynamic_param_t param;
-
-  param.mute = 0;
-  param.target_volume_dB = volume;
-
-  // enable compression, high quality, use timings from ST's sample application
-
-  param.enable_compr = 1;
-  param.quality = 1;
-  param.attack_time = 2103207220;
-  param.release_time = 2146924480;
-
-  int32_t error = svc_setConfig(&param, _svcPersistent);
+  int32_t error = svc_setConfig(&_dynamicParams, _svcPersistent);
   if (error != SVC_ERROR_NONE) {
     Error_Handler();
   }
+}
+
+/**
+ * Set the muted state
+ */
+
+inline void VolumeControl::setMute(bool mute) {
+
+  _dynamicParams.mute = mute ? 1 : 0;
+
+  int32_t error = svc_setConfig(&_dynamicParams, _svcPersistent);
+  if (error != SVC_ERROR_NONE) {
+    Error_Handler();
+  }
+}
+
+/**
+ * Get the mute state
+ */
+
+inline bool VolumeControl::isMuted() const {
+  return _dynamicParams.mute == 1;
 }
 
 /**

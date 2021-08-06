@@ -9,8 +9,8 @@
 class MuteButton: public Button {
 
   private:
-    bool _pressed;
-    bool _muted;
+    volatile bool _muted;
+    bool _ignoreNextUp;
 
   public:
     MuteButton();
@@ -20,24 +20,43 @@ class MuteButton: public Button {
 };
 
 inline MuteButton::MuteButton() :
-    Button(GpioPin(MUTE_GPIO_Port, MUTE_Pin), true) {
+    Button(GpioPin(MUTE_GPIO_Port, MUTE_Pin), false) {
 
-  _pressed = false;
   _muted = false;
+  _ignoreNextUp = false;
 }
 
 inline void MuteButton::run() {
 
-  // only return true the first time that the button is detected as down.
-  // further calls will return false until the button is released again.
+  Button::CurrentState state = getAndClearCurrentState();
 
-  if (isPressed()) {
-    if (_pressed == false) {
-      _pressed = true;
-      _muted ^= true;
+  // check for idle
+
+  if (state == Button::CurrentState::None) {
+    return;
+  }
+
+  if (state == Down) {
+
+    if (!_muted) {
+      _muted = true;
+      _ignoreNextUp = true;   // the lifting of the button shouldn't exit mute
     }
-  } else {
-    _pressed = false;
+  }
+  else {
+
+    if (_muted) {
+
+      if (_ignoreNextUp) {
+
+        // this is the lifting of the button that went into mute
+
+        _ignoreNextUp = false;
+      }
+      else {
+        _muted = false;
+      }
+    }
   }
 }
 
