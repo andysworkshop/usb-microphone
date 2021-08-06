@@ -25,6 +25,7 @@ class Audio {
     GraphicEqualizer &_graphicEqualiser;
     VolumeControl &_volumeControl;
     bool _running;
+    uint8_t _zeroCounter;
 
   public:
     static Audio *_instance;
@@ -62,6 +63,7 @@ inline Audio::Audio(const MuteButton &muteButton, const LiveLed &liveLed, Graphi
 
   Audio::_instance = this;
   _running = false;
+  _zeroCounter = 0;
 
   // allocate buffers
 
@@ -143,7 +145,7 @@ inline void Audio::setLed() const {
 }
 
 /**
- * Set the volume gain
+ * Set the volume gain: the mute state is preserved
  */
 
 inline void Audio::setVolume(int16_t volume) {
@@ -186,14 +188,34 @@ inline void Audio::sendData(volatile int32_t *data_in, int16_t *data_out) {
 
   if (_running) {
 
+    // ensure that the mute state in the smart volume control library matches the mute
+    // state of the hardware button. we do this here to ensure that we only call SVC
+    // methods from inside an IRQ context.
+
     if (_muteButton.isMuted()) {
+      if (!_volumeControl.isMuted()) {
+        _volumeControl.setMute(true);
 
-      // we're muted so zero this half of the send buffer. this works around Windows/Citrix habit
-      // of disconnecting the device if the stream of sample data suddenly pauses.
+        // the next 50 frames (500ms) will be zero'd - this seems to do a better job of catching the
+        // mute button 'pop' than the SVC filter mute when going into a mute
 
+        _zeroCounter = 50;
+      }
+    }
+    else {
+      if (_volumeControl.isMuted()) {
+
+        // coming out of a mute is handled well by the SVC filter
+
+        _volumeControl.setMute(false);
+      }
+    }
+
+    if (_zeroCounter) {
       memset(data_out, 0, (MIC_SAMPLES_PER_PACKET * sizeof(uint16_t)) / 2);
-
-    } else {
+      _zeroCounter--;
+    }
+    else {
 
       // transform the I2S samples from the 64 bit L/R (32 bits per side) of which we
       // only have data in the L side. Take the most significant 16 bits, being careful

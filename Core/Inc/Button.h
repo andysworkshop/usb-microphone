@@ -12,83 +12,96 @@
 
 class Button: public GpioPin {
 
+  public:
+    enum CurrentState {
+      None,
+      Up,
+      Down
+    };
+
   private:
 
-    static const uint32_t DEBOUNCE_DELAY_MILLIS = 50;
+    static const uint32_t DEBOUNCE_UP_DELAY_MILLIS = 100;
+    static const uint32_t DEBOUNCE_DOWN_DELAY_MILLIS = 1;
 
     enum InternalState {
       Idle,                         // nothing happening
-      DebounceDelay                 // delaying...
+      DebounceUpDelay,              // delaying...
+      DebounceDownDelay
     };
 
-    bool _pressedState;             // The pressed state
+    bool _pressedIsHigh;            // The button is electrically HIGH when pressed?
     InternalState _internalState;   // Internal state of the class
 
-    uint32_t _lastTime;             // The last time we sampled our button
+    bool _lastButtonReading;        // the last state we sampled
+    uint32_t _transitionTime;       // the time of the last transition
 
   public:
-
-    Button(const GpioPin &pin, bool pressedState);
-    bool isPressed();
+    Button(const GpioPin &pin, bool pressedIsHigh);
+    CurrentState getAndClearCurrentState();   // retrieve current state and reset to idle
 };
 
-inline Button::Button(const GpioPin &pin, bool pressedState) :
+inline Button::Button(const GpioPin &pin, bool pressedIsHigh) :
     GpioPin(pin) {
 
-  _lastTime = 0;
-  _pressedState = pressedState;
+  _transitionTime = 0;
+  _lastButtonReading = false;
+  _pressedIsHigh = pressedIsHigh;
   _internalState = Idle;
 }
 
 /**
- * Get the current state
- * @return The current state
+ * Get and reset the current state. This should be called in the main application loop.
+ * @return The current state. If the current state is one of the up/down pressed states
+ * then that state is returned and then internally reset to none so the application only
+ * gets one 'notification' that the button is pressed/released.
  */
 
-inline bool Button::isPressed() {
-
-  uint32_t newTime;
-  bool state;
+inline Button::CurrentState Button::getAndClearCurrentState() {
 
   // read the pin and flip it if this switch reads high when open
 
-  state = getState();
-
-  if (_pressedState) {
-    state ^= true;
+  bool buttonReading = getState();
+  if (!_pressedIsHigh) {
+    buttonReading ^= true;
   }
 
-  // if state is low then wherever we were then
-  // we are now back at not pressed
+  const uint32_t now = HAL_GetTick();
 
-  if (!state) {
-    _internalState = Idle;
-    return false;
-  }
+  if (_lastButtonReading == buttonReading) {
 
-  // sample the counter
+    // no change in the button reading, we could be exiting the debounce delay
 
-  newTime = HAL_GetTick();
+    switch (_internalState) {
 
-  // act on the internal state machine
+    case DebounceUpDelay:
+      if (now - _transitionTime > DEBOUNCE_UP_DELAY_MILLIS) {
+        _internalState = Idle;
+        return Up;
+      }
+      break;
 
-  switch (_internalState) {
-  case Idle:
-    _internalState = DebounceDelay;
-    _lastTime = newTime;
-    break;
+    case DebounceDownDelay:
+      if (now - _transitionTime > DEBOUNCE_DOWN_DELAY_MILLIS) {
+        _internalState = Idle;
+        return Down;
+      }
+      break;
 
-  case DebounceDelay:
-    if (newTime - _lastTime >= DEBOUNCE_DELAY_MILLIS) {
-
-      // been high for at least the debounce time
-
-      return true;
+    case Idle:
+      break;
     }
-    break;
+
+    return None;
+
+  } else {
+
+    // button reading has changed, this always causes the state to enter the debounce delay
+
+    _transitionTime = now;
+    _lastButtonReading = buttonReading;
+    _internalState = buttonReading ? DebounceDownDelay : DebounceUpDelay;
+
+    return None;
   }
-
-  // nothing happened at this time
-
-  return false;
 }
